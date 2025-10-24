@@ -26,24 +26,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# markdown files (except documentation)
+# markdown files (except README)
 *.md
 !README.md
-!CLOUDFLARE-SETUP.md
-!CLOUDFLARE-SETUP-GUIDE.md
-!CLOUDFLARE-NEXT-STEPS.md
-!AUDIOBOOK-SETUP.md
-!IMPLEMENTATION-SUMMARY.md
-!PDF-READER-OPTIMIZATIONS.md
-!PDF-RESPONSIVE-UPDATE.md
-!TOAST-QUICK-REFERENCE.md
-!README-TOASTS.md
-!TOAST-SERVICE-GUIDE.md
-!TOAST-SYSTEM-OVERVIEW.md
-!VISUAL-DIAGRAMS.md
-!CHECKLIST-COMPLETION.txt
 
-# audio files (importar en el servidor después)
+# audio files
 *.mp3
 *.wav
 *.ogg
