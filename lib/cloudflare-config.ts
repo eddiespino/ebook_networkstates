@@ -13,12 +13,34 @@ export interface CloudflareConfig {
   readonly cdnBaseUrl: string;
 }
 
-const AUDIO_FILE_NAME = "TheDigitalCommunityManifesto.MP3";
+const AUDIO_FILE_NAME = "ebook.MP3";
 const BUCKET_NAME =
   process.env.NEXT_PUBLIC_R2_BUCKET || "ebook-manifiesto-audio";
 const CDN_BASE_URL = `https://${BUCKET_NAME}.r2.dev`;
-const AUDIO_URL =
-  process.env.NEXT_PUBLIC_AUDIO_URL || `${CDN_BASE_URL}/${AUDIO_FILE_NAME}`;
+
+/**
+ * Devuelve true si la URL es absoluta (http/https)
+ */
+const isAbsoluteHttpUrl = (value: string): boolean =>
+  /^https?:\/\//i.test(value);
+
+/**
+ * Normaliza la URL del audio para evitar rutas relativas que dependan de la ruta actual
+ * - Si es absoluta (http/https): se usa tal cual
+ * - Si es relativa (con o sin "/"): se asume como nombre de archivo en el CDN de R2
+ * - Si está vacía: usa el nombre de archivo por defecto en el CDN
+ */
+const normalizeAudioUrl = (value?: string | null): string => {
+  const raw = (value ?? "").trim();
+  if (raw && isAbsoluteHttpUrl(raw)) return raw;
+
+  // Quitar leading slash si viene como "/archivo.mp3"
+  const clean = raw.replace(/^\/+/, "");
+  const file = clean.length > 0 ? clean : AUDIO_FILE_NAME;
+  return `${CDN_BASE_URL}/${file}`;
+};
+
+const AUDIO_URL = normalizeAudioUrl(process.env.NEXT_PUBLIC_AUDIO_URL);
 
 export const cloudflareConfig: CloudflareConfig = {
   audioUrl: AUDIO_URL,

@@ -12,6 +12,7 @@ interface UseAudioPlayerProps {
 
 export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const hasInitialized = useRef(false);
 
   const {
     isPlaying,
@@ -24,6 +25,18 @@ export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
     setVolume,
     setPlaybackRate,
   } = useAudioPlayerStore();
+
+  // Inicializar el src del audio solo una vez
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || hasInitialized.current) return;
+
+    // Asignar el src sin cargar automáticamente
+    audio.src = audioSrc;
+    hasInitialized.current = true;
+
+    console.log("Audio source set (not loaded yet):", audioSrc);
+  }, [audioSrc]);
 
   // Load audio metadata
   useEffect(() => {
@@ -74,33 +87,104 @@ export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
     };
 
     const handleError = (e: Event) => {
-      console.error("Audio loading error:", e);
+      const audioElement = e.target as HTMLAudioElement;
+      const errorDetails = {
+        error: audioElement.error,
+        errorCode: audioElement.error?.code,
+        errorMessage: audioElement.error?.message,
+        networkState: audioElement.networkState,
+        readyState: audioElement.readyState,
+        src: audioElement.src,
+        currentSrc: audioElement.currentSrc,
+      };
+
+      console.error("Audio loading error:", errorDetails);
+      console.error("Error completo:", e);
+
+      let errorMessage = "No pudimos cargar el archivo de audio.";
+      let errorTitle = "Error de reproducción";
+      let shouldShowToast = true;
+
+      if (audioElement.error) {
+        switch (audioElement.error.code) {
+          case MediaError.MEDIA_ERR_ABORTED:
+            errorMessage = "Descarga de audio abortada.";
+            break;
+          case MediaError.MEDIA_ERR_NETWORK:
+            errorMessage =
+              "Error de red al descargar el audio. Verifica tu conexión.";
+            break;
+          case MediaError.MEDIA_ERR_DECODE:
+            errorMessage =
+              "Error al decodificar el archivo de audio. El archivo puede estar corrupto.";
+            break;
+          case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+            errorTitle = "Error de CORS en Cloudflare R2";
+            errorMessage =
+              "El archivo necesita configuración CORS en el Worker de Cloudflare. Ver CLOUDFLARE-WORKER-CORS.md";
+            console.error(
+              "💡 SOLUCIÓN: Configura CORS en el Worker de Cloudflare R2"
+            );
+            console.error("📖 Guía: CLOUDFLARE-WORKER-CORS.md");
+            // No mostrar toast si es error de CORS durante carga inicial
+            shouldShowToast = false;
+            break;
+        }
+      } else {
+        // Error sin código específico - probablemente CORS
+        console.warn(
+          "Error de audio sin código específico - probablemente CORS"
+        );
+        shouldShowToast = false;
+      }
+
       setIsPlaying(false);
-      showErrorToast(
-        "Error de reproducción",
-        "No pudimos cargar el archivo de audio. Verifica tu conexión."
-      );
+
+      if (shouldShowToast) {
+        showErrorToast(errorTitle, errorMessage);
+      }
     };
+
+    let bufferingTimeout: NodeJS.Timeout | null = null;
 
     const handleStalled = () => {
       console.warn("Audio playback stalled - buffering...");
-      showWarningToast("Buffering...", "Descargando contenido de audio");
+
+      // Solo mostrar notificación si el buffering dura más de 3 segundos
+      bufferingTimeout = setTimeout(() => {
+        showWarningToast("Buffering...", "Descargando contenido de audio");
+      }, 3000);
     };
 
     const handleWaiting = () => {
       console.log("Audio buffering...");
+      // No mostrar notificación inmediatamente
     };
 
     const handlePlaying = () => {
-      console.log("Audio playing smoothly");
+      // Limpiar timeout de buffering si el audio empieza a reproducir
+      if (bufferingTimeout) {
+        clearTimeout(bufferingTimeout);
+        bufferingTimeout = null;
+      }
     };
 
-    // Force load metadata
-    audio.load();
+    const handleCanPlayThrough = () => {
+      // Limpiar timeout de buffering
+      if (bufferingTimeout) {
+        clearTimeout(bufferingTimeout);
+        bufferingTimeout = null;
+      }
+    };
+
+    // No forzar carga automática - esperar a que el usuario haga click en Play
+    // Esto evita errores de CORS al cargar la página
+    // audio.load();
 
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
     audio.addEventListener("durationchange", handleDurationChange);
     audio.addEventListener("canplay", handleCanPlay);
+    audio.addEventListener("canplaythrough", handleCanPlayThrough);
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("ended", handleEnded);
     audio.addEventListener("error", handleError);
@@ -109,9 +193,15 @@ export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
     audio.addEventListener("playing", handlePlaying);
 
     return () => {
+      // Limpiar timeout de buffering al desmontar
+      if (bufferingTimeout) {
+        clearTimeout(bufferingTimeout);
+      }
+
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       audio.removeEventListener("durationchange", handleDurationChange);
       audio.removeEventListener("canplay", handleCanPlay);
+      audio.removeEventListener("canplaythrough", handleCanPlayThrough);
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("ended", handleEnded);
       audio.removeEventListener("error", handleError);

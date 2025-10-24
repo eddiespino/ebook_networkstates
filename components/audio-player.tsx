@@ -32,6 +32,8 @@ export function AudioPlayer({
     author = "NoSpirit & Starkerz",
     coverImage = "/book-cover.jpg",
 }: AudioPlayerProps) {
+
+
     const {
         audioRef,
         isPlaying,
@@ -76,6 +78,8 @@ export function AudioPlayer({
         const audio = audioRef.current;
         if (!audio) return;
 
+        let bufferingTimeout: NodeJS.Timeout | null = null;
+
         const handleLoadStart = () => {
             setIsLoading(true);
             setHasError(false);
@@ -83,15 +87,29 @@ export function AudioPlayer({
 
         const handleCanPlay = () => {
             setIsLoading(false);
+        };
+
+        const handleCanPlayThrough = () => {
+            setIsLoading(false);
             setIsBuffering(false);
         };
 
         const handleWaiting = () => {
-            setIsBuffering(true);
+            // Solo mostrar buffering después de 500ms de espera
+            bufferingTimeout = setTimeout(() => {
+                setIsBuffering(true);
+            }, 500);
         };
 
         const handlePlaying = () => {
             setIsBuffering(false);
+            setIsLoading(false);
+
+            // Limpiar timeout de buffering
+            if (bufferingTimeout) {
+                clearTimeout(bufferingTimeout);
+                bufferingTimeout = null;
+            }
         };
 
         const handleError = () => {
@@ -102,13 +120,20 @@ export function AudioPlayer({
 
         audio.addEventListener("loadstart", handleLoadStart);
         audio.addEventListener("canplay", handleCanPlay);
+        audio.addEventListener("canplaythrough", handleCanPlayThrough);
         audio.addEventListener("waiting", handleWaiting);
         audio.addEventListener("playing", handlePlaying);
         audio.addEventListener("error", handleError);
 
         return () => {
+            // Limpiar timeout al desmontar
+            if (bufferingTimeout) {
+                clearTimeout(bufferingTimeout);
+            }
+
             audio.removeEventListener("loadstart", handleLoadStart);
             audio.removeEventListener("canplay", handleCanPlay);
+            audio.removeEventListener("canplaythrough", handleCanPlayThrough);
             audio.removeEventListener("waiting", handleWaiting);
             audio.removeEventListener("playing", handlePlaying);
             audio.removeEventListener("error", handleError);
@@ -373,9 +398,7 @@ export function AudioPlayer({
                 {/* Hidden Audio Element */}
                 <audio
                     ref={audioRef}
-                    src={audioSrc}
-                    preload="metadata"
-                    crossOrigin="anonymous"
+                    preload="none"
                 />
             </div>
         </Card>

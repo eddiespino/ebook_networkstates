@@ -52,6 +52,24 @@ const nextConfig = {
       },
     ];
   },
+  // Redirecciones para evitar 404 si algún cliente intenta cargar el MP3 como ruta relativa
+  // (por ejemplo, /audiobook/TheDigitalCommunityManifesto.MP3)
+  async rewrites() {
+    const audioUrl =
+      process.env.NEXT_PUBLIC_AUDIO_URL ||
+      "https://ebook.tcmd-spkcc.com/ebook/ebook.mp3";
+
+    return [
+      {
+        source: "/audiobook/:path*.mp3",
+        destination: audioUrl,
+      },
+      {
+        source: "/audiobook/:path*.MP3",
+        destination: audioUrl,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

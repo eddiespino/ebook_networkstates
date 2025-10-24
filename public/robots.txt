@@ -1,0 +1,10 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://book.networkstates.online/sitemap.xml
+
+# Disallow admin or private paths if any
+# User-agent: *
+# Disallow: /private/

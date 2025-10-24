@@ -5,11 +5,16 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Home, Headphones, BookOpen, Download } from "lucide-react"
 import { downloadPdf } from "@/lib/pdf-config"
+import { getAudioUrl } from "@/lib/cloudflare-config"
 import { AudioPlayer } from "@/components/audio-player"
 
 export default function AudiobookPage() {
-    // Ruta al archivo de audio local
-    const audioSrc = "/audiobook/TheDigitalCommunityManifesto.MP3"
+    // 🎵 Audio desde Cloudflare R2 (normalizado a URL absoluta)
+    const audioSrc = getAudioUrl()
+
+    if (!audioSrc) {
+        throw new Error("NEXT_PUBLIC_AUDIO_URL no está configurada en .env.local")
+    }
 
     return (
         <div className="min-h-screen bg-background pt-20">
