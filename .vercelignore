@@ -1,0 +1,5 @@
+# Exclude large audio file - using Cloudflare R2 instead
+public/audiobook/*.mp3
+public/audiobook/*.MP3
+public/ebook.mp3
+public/ebook.MP3

@@ -231,6 +231,15 @@ export function usePDFReader({
     return () => container.removeEventListener("scroll", handleScroll);
   }, [readingMode, numPages, pageNumber]);
 
+  // Funciones de navegación
+  const goToPrevPage = useCallback((): void => {
+    setPageNumber((prev) => Math.max(prev - 1, 1));
+  }, []);
+
+  const goToNextPage = useCallback((): void => {
+    setPageNumber((prev) => Math.min(prev + 1, numPages));
+  }, [numPages]);
+
   // Navegación con teclado
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
@@ -270,15 +279,6 @@ export function usePDFReader({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [readingMode, numPages, goToPrevPage, goToNextPage, setPageNumber]);
-
-  // Funciones de navegación
-  const goToPrevPage = useCallback((): void => {
-    setPageNumber((prev) => Math.max(prev - 1, 1));
-  }, []);
-
-  const goToNextPage = useCallback((): void => {
-    setPageNumber((prev) => Math.min(prev + 1, numPages));
-  }, [numPages]);
 
   const goToPage = useCallback(
     (page: number): void => {
