@@ -17,7 +17,7 @@ import {
     AlertCircle,
     Loader,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface AudioPlayerProps {
     audioSrc: string;
@@ -58,14 +58,14 @@ export function AudioPlayer({
 
     const playbackRates = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
-    const handleVolumeToggle = () => {
+    const handleVolumeToggle = useCallback(() => {
         if (volume > 0) {
             setPreviousVolume(volume);
             setVolume(0);
         } else {
             setVolume(previousVolume || 0.8);
         }
-    };
+    }, [volume, previousVolume, setVolume]);
 
     const getVolumeIcon = () => {
         if (volume === 0) return <VolumeX className="h-5 w-5" />;
@@ -179,10 +179,10 @@ export function AudioPlayer({
 
         window.addEventListener("keydown", handleKeyPress);
         return () => window.removeEventListener("keydown", handleKeyPress);
-    }, [isPlaying, volume, togglePlayPause, skipBackward, skipForward]);
+    }, [isPlaying, volume, togglePlayPause, skipBackward, skipForward, setVolume, handleVolumeToggle]);
 
     return (
-        <Card className="w-full bg-linear-to-br from-zinc-900 via-zinc-800 to-zinc-900 border-zinc-700 shadow-2xl">
+        <Card className="w-full bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border-zinc-700 shadow-2xl">
             <div className="p-6 md:p-8">
                 {/* Estado de Error */}
                 {hasError && (

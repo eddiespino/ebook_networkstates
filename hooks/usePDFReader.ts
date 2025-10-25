@@ -269,7 +269,7 @@ export function usePDFReader({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [readingMode, numPages]);
+  }, [readingMode, numPages, goToPrevPage, goToNextPage, setPageNumber]);
 
   // Funciones de navegación
   const goToPrevPage = useCallback((): void => {

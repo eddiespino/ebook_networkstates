@@ -1,9 +1,8 @@
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useRef } from "react";
 import { useAudioPlayerStore } from "@/store/audioPlayerStore";
 import {
   showErrorToast,
   showWarningToast,
-  showInfoToast,
 } from "@/lib/toast-service";
 
 interface UseAudioPlayerProps {
@@ -204,12 +203,12 @@ export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
       audio.removeEventListener("canplaythrough", handleCanPlayThrough);
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("ended", handleEnded);
-      audio.removeEventListener("error", handleError);
-      audio.removeEventListener("stalled", handleStalled);
-      audio.removeEventListener("waiting", handleWaiting);
-      audio.removeEventListener("playing", handlePlaying);
-    };
-  }, [audioSrc]);
+    audio.removeEventListener("error", handleError);
+    audio.removeEventListener("stalled", handleStalled);
+    audio.removeEventListener("waiting", handleWaiting);
+    audio.removeEventListener("playing", handlePlaying);
+  };
+}, [audioSrc, setDuration, setCurrentTime, setIsPlaying, currentTime]);
 
   // Control play/pause
   useEffect(() => {
