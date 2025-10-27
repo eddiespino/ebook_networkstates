@@ -68,10 +68,10 @@ export function PDFReaderClient({ pdfUrl }: PDFReaderClientProps) {
         console.error("Error loading PDF:", error);
         setHasError(true);
         setIsLoading(false);
-        setErrorMessage(error.message || "Error al cargar el PDF");
+        setErrorMessage(error.message || "Failed to load PDF");
         showErrorToast(
-            "Error al cargar el PDF",
-            "Verifica tu conexión a internet o intenta más tarde"
+            "Failed to load PDF",
+            "Please check your internet connection or try again later"
         );
     }
 
@@ -196,20 +196,20 @@ export function PDFReaderClient({ pdfUrl }: PDFReaderClientProps) {
                         <div className="w-full p-6 rounded-lg bg-destructive/10 border border-destructive/30 flex items-center gap-4 my-4">
                             <AlertCircle className="h-6 w-6 text-destructive shrink-0" />
                             <div className="flex-1">
-                                <p className="font-semibold text-destructive">Error al cargar el PDF</p>
+                                <p className="font-semibold text-destructive">Failed to load PDF</p>
                                 <p className="text-sm text-destructive/80">{errorMessage}</p>
                             </div>
                         </div>
                     )}
 
-                    {/* Indicador de Carga */}
+                    {/* Loading Indicator */}
                     {isLoading && !hasError && (
                         <div className="w-full flex items-center justify-center py-8">
                             <div className="flex flex-col items-center gap-4">
                                 <Loader className="h-8 w-8 text-primary animate-spin" />
                                 <div className="text-center">
-                                    <p className="font-semibold text-primary">Cargando PDF...</p>
-                                    <p className="text-sm text-muted-foreground mt-1">Por favor espera</p>
+                                    <p className="font-semibold text-primary">Loading PDF...</p>
+                                    <p className="text-sm text-muted-foreground mt-1">Please wait</p>
                                 </div>
                             </div>
                         </div>

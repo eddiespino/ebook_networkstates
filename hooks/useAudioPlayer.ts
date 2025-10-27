@@ -1,17 +1,14 @@
 import { useEffect, useRef } from "react";
 import { useAudioPlayerStore } from "@/store/audioPlayerStore";
-import {
-  showErrorToast,
-  showWarningToast,
-} from "@/lib/toast-service";
+import { showErrorToast, showWarningToast } from "@/lib/toast-service";
 
 interface UseAudioPlayerProps {
-  audioSrc: string;
+  readonly audioSrc: string;
 }
 
 export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const hasInitialized = useRef(false);
+  const previousSrcRef = useRef<string>("");
 
   const {
     isPlaying,
@@ -23,19 +20,50 @@ export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
     setDuration,
     setVolume,
     setPlaybackRate,
+    reset,
   } = useAudioPlayerStore();
 
-  // Inicializar el src del audio solo una vez
+  // Detectar cambio de fuente de audio y recargar
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || hasInitialized.current) return;
+    if (!audio) return;
 
-    // Asignar el src sin cargar automáticamente
-    audio.src = audioSrc;
-    hasInitialized.current = true;
+    // Si la fuente cambió, resetear y cargar nuevo audio
+    if (audioSrc && audioSrc !== previousSrcRef.current) {
+      const wasPlaying = isPlaying; // Guardar el estado de reproducción
 
-    console.log("Audio source set (not loaded yet):", audioSrc);
-  }, [audioSrc]);
+      // Pausar audio actual si está reproduciendo
+      if (!audio.paused) {
+        audio.pause();
+      }
+
+      // Resetear estado temporal (sin cambiar isPlaying global)
+      setCurrentTime(0);
+      setDuration(0);
+
+      // Actualizar src
+      audio.src = audioSrc;
+      previousSrcRef.current = audioSrc;
+
+      // Cargar metadatos del nuevo audio
+      audio.load();
+
+      // Si estaba reproduciendo, auto-reproducir el nuevo audio cuando esté listo
+      if (wasPlaying) {
+        const handleCanPlayAutoPlay = () => {
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            playPromise.catch((error) => {
+              console.error("Error auto-playing next chapter:", error);
+              setIsPlaying(false);
+            });
+          }
+          audio.removeEventListener("canplay", handleCanPlayAutoPlay);
+        };
+        audio.addEventListener("canplay", handleCanPlayAutoPlay);
+      }
+    }
+  }, [audioSrc, isPlaying, setCurrentTime, setDuration, setIsPlaying]);
 
   // Load audio metadata
   useEffect(() => {
@@ -49,10 +77,6 @@ export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
         isFinite(audio.duration)
       ) {
         setDuration(audio.duration);
-        // Restore saved position
-        if (currentTime > 0 && currentTime < audio.duration) {
-          audio.currentTime = currentTime;
-        }
       }
     };
 
@@ -80,10 +104,10 @@ export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
       setCurrentTime(audio.currentTime);
     };
 
-    const handleEnded = () => {
-      setIsPlaying(false);
-      setCurrentTime(0);
-    };
+    // NOTE: No manejamos el evento 'ended' aquí porque el AudioPlayer
+    // tiene su propio handler más completo que incluye auto-advance
+    // al siguiente capítulo. Manejar ended aquí establecería isPlaying=false
+    // antes de que se pueda ejecutar el auto-advance.
 
     const handleError = (e: Event) => {
       const audioElement = e.target as HTMLAudioElement;
@@ -131,9 +155,6 @@ export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
         }
       } else {
         // Error without specific code - probably CORS
-        console.warn(
-          "Audio error without specific code - probably CORS"
-        );
         shouldShowToast = false;
       }
 
@@ -147,8 +168,6 @@ export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
     let bufferingTimeout: NodeJS.Timeout | null = null;
 
     const handleStalled = () => {
-      console.warn("Audio playback stalled - buffering...");
-
       // Only show notification if buffering lasts more than 3 seconds
       bufferingTimeout = setTimeout(() => {
         showWarningToast("Buffering...", "Downloading audio content");
@@ -156,7 +175,6 @@ export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
     };
 
     const handleWaiting = () => {
-      console.log("Audio buffering...");
       // Don't show notification immediately
     };
 
@@ -185,7 +203,7 @@ export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
     audio.addEventListener("canplay", handleCanPlay);
     audio.addEventListener("canplaythrough", handleCanPlayThrough);
     audio.addEventListener("timeupdate", handleTimeUpdate);
-    audio.addEventListener("ended", handleEnded);
+    // NOTE: 'ended' event is handled in AudioPlayer component for auto-advance
     audio.addEventListener("error", handleError);
     audio.addEventListener("stalled", handleStalled);
     audio.addEventListener("waiting", handleWaiting);
@@ -202,13 +220,13 @@ export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
       audio.removeEventListener("canplay", handleCanPlay);
       audio.removeEventListener("canplaythrough", handleCanPlayThrough);
       audio.removeEventListener("timeupdate", handleTimeUpdate);
-      audio.removeEventListener("ended", handleEnded);
-    audio.removeEventListener("error", handleError);
-    audio.removeEventListener("stalled", handleStalled);
-    audio.removeEventListener("waiting", handleWaiting);
-    audio.removeEventListener("playing", handlePlaying);
-  };
-}, [audioSrc, setDuration, setCurrentTime, setIsPlaying, currentTime]);
+      // NOTE: 'ended' event is handled in AudioPlayer component
+      audio.removeEventListener("error", handleError);
+      audio.removeEventListener("stalled", handleStalled);
+      audio.removeEventListener("waiting", handleWaiting);
+      audio.removeEventListener("playing", handlePlaying);
+    };
+  }, [setDuration, setCurrentTime, setIsPlaying]);
 
   // Control play/pause
   useEffect(() => {
@@ -224,7 +242,11 @@ export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
         });
       }
     } else {
-      audio.pause();
+      // Solo pausar si el audio no está ya pausado
+      // Esto evita el AbortError cuando se interrumpe un play()
+      if (!audio.paused) {
+        audio.pause();
+      }
     }
   }, [isPlaying]);
 

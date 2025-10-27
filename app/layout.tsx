@@ -1,4 +1,4 @@
-import type React from "react"
+import type React from "next"
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
@@ -6,11 +6,14 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Toaster } from "@/components/ui/toaster"
+import { PWAInstallBanner } from "@/components/pwa-install-banner"
 import { siteConfig } from "@/lib/site-config"
+import { getWebsiteSchema, getOrganizationSchema, getBookSchema } from "@/lib/json-ld-schema"
+import "@/lib/polyfills"
 import "./globals.css"
 
-const _geist = Geist({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
+const geist = Geist({ subsets: ["latin"] })
+const geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -66,8 +69,7 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
   alternates: {
     canonical: siteConfig.url,
-  },
-  generator: "Next.js",
+  }
 }
 
 export default function RootLayout({
@@ -75,14 +77,30 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // JSON-LD estructurado para SEO
+  const jsonLdSchemas = [
+    getWebsiteSchema(),
+    getOrganizationSchema(),
+    getBookSchema(),
+  ]
+
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`font-sans antialiased`} suppressHydrationWarning>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(jsonLdSchemas),
+          }}
+        />
+      </head>
+      <body className={`${geist.className} antialiased`} suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <Navbar />
           {children}
           <Footer />
           <Toaster />
+          <PWAInstallBanner />
           <Analytics />
         </ThemeProvider>
       </body>

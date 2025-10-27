@@ -1,22 +1,47 @@
-"use client"
+import type { Metadata } from "next"
+import { siteConfig } from "@/lib/site-config"
+import { ReadClient } from "./read-client"
 
-import dynamic from "next/dynamic"
-import { getPdfUrl } from "@/lib/pdf-config"
-
-const PDFReaderClient = dynamic(() => import("@/components/pdf-reader-client").then((mod) => mod.PDFReaderClient), {
-  ssr: false,
-  loading: () => (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-        <p className="text-muted-foreground">Loading PDF Reader...</p>
-      </div>
-    </div>
-  ),
-})
+export const metadata: Metadata = {
+  title: `Read Online | ${siteConfig.name}`,
+  description:
+    "Read 'The Digital Community Manifesto' online. Complete interactive web version exploring blockchain governance, Hive blockchain, and network states.",
+  keywords: [
+    "read online",
+    "blockchain hive",
+    "manifesto",
+    "network states",
+    "ebook",
+    "hive blockchain",
+    "blockchain governance",
+  ],
+  openGraph: {
+    title: `Read Online | ${siteConfig.name}`,
+    description:
+      "Read the Digital Community Manifesto online. Explore blockchain governance and Hive ecosystem.",
+    url: `${siteConfig.url}/read`,
+    type: "website",
+    images: [
+      {
+        url: siteConfig.ogImage,
+        width: 1200,
+        height: 630,
+        alt: "Book Cover",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `Read Online | ${siteConfig.name}`,
+    description:
+      "Read the Digital Community Manifesto about blockchain and Hive governance online",
+    images: [siteConfig.ogImage],
+  },
+  alternates: {
+    canonical: `${siteConfig.url}/read`,
+  },
+}
 
 export default function ReadPage() {
-  const pdfUrl = getPdfUrl()
-
-  return <PDFReaderClient pdfUrl={pdfUrl} />
+  return <ReadClient />
 }
