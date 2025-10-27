@@ -8,7 +8,7 @@ import Link from "next/link"
 import { downloadPdf } from "@/lib/pdf-config"
 import { usePDFReader } from "@/hooks/usePDFReader"
 import { KeyboardShortcutsDialog } from "@/components/keyboard-shortcuts-dialog"
-import { showErrorToast, showWarningToast } from "@/lib/toast-service"
+import { showErrorToast } from "@/lib/toast-service"
 
 import "react-pdf/dist/Page/AnnotationLayer.css"
 import "react-pdf/dist/Page/TextLayer.css"

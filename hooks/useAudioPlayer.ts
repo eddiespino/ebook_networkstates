@@ -1,9 +1,8 @@
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useRef } from "react";
 import { useAudioPlayerStore } from "@/store/audioPlayerStore";
 import {
   showErrorToast,
   showWarningToast,
-  showInfoToast,
 } from "@/lib/toast-service";
 
 interface UseAudioPlayerProps {
@@ -101,39 +100,39 @@ export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
       console.error("Audio loading error:", errorDetails);
       console.error("Error completo:", e);
 
-      let errorMessage = "No pudimos cargar el archivo de audio.";
-      let errorTitle = "Error de reproducción";
+      let errorMessage = "Could not load audio file.";
+      let errorTitle = "Playback error";
       let shouldShowToast = true;
 
       if (audioElement.error) {
         switch (audioElement.error.code) {
           case MediaError.MEDIA_ERR_ABORTED:
-            errorMessage = "Descarga de audio abortada.";
+            errorMessage = "Audio download aborted.";
             break;
           case MediaError.MEDIA_ERR_NETWORK:
             errorMessage =
-              "Error de red al descargar el audio. Verifica tu conexión.";
+              "Network error while downloading audio. Check your connection.";
             break;
           case MediaError.MEDIA_ERR_DECODE:
             errorMessage =
-              "Error al decodificar el archivo de audio. El archivo puede estar corrupto.";
+              "Error decoding audio file. The file may be corrupted.";
             break;
           case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-            errorTitle = "Error de CORS en Cloudflare R2";
+            errorTitle = "CORS Error on Cloudflare R2";
             errorMessage =
-              "El archivo necesita configuración CORS en el Worker de Cloudflare. Ver CLOUDFLARE-WORKER-CORS.md";
+              "The file needs CORS configuration in Cloudflare Worker. See CLOUDFLARE-WORKER-CORS.md";
             console.error(
-              "💡 SOLUCIÓN: Configura CORS en el Worker de Cloudflare R2"
+              "💡 SOLUTION: Configure CORS in Cloudflare R2 Worker"
             );
-            console.error("📖 Guía: CLOUDFLARE-WORKER-CORS.md");
-            // No mostrar toast si es error de CORS durante carga inicial
+            console.error("📖 Guide: CLOUDFLARE-WORKER-CORS.md");
+            // Don't show toast for CORS error during initial load
             shouldShowToast = false;
             break;
         }
       } else {
-        // Error sin código específico - probablemente CORS
+        // Error without specific code - probably CORS
         console.warn(
-          "Error de audio sin código específico - probablemente CORS"
+          "Audio error without specific code - probably CORS"
         );
         shouldShowToast = false;
       }
@@ -150,19 +149,19 @@ export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
     const handleStalled = () => {
       console.warn("Audio playback stalled - buffering...");
 
-      // Solo mostrar notificación si el buffering dura más de 3 segundos
+      // Only show notification if buffering lasts more than 3 seconds
       bufferingTimeout = setTimeout(() => {
-        showWarningToast("Buffering...", "Descargando contenido de audio");
+        showWarningToast("Buffering...", "Downloading audio content");
       }, 3000);
     };
 
     const handleWaiting = () => {
       console.log("Audio buffering...");
-      // No mostrar notificación inmediatamente
+      // Don't show notification immediately
     };
 
     const handlePlaying = () => {
-      // Limpiar timeout de buffering si el audio empieza a reproducir
+      // Clear buffering timeout if audio starts playing
       if (bufferingTimeout) {
         clearTimeout(bufferingTimeout);
         bufferingTimeout = null;
@@ -170,15 +169,15 @@ export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
     };
 
     const handleCanPlayThrough = () => {
-      // Limpiar timeout de buffering
+      // Clear buffering timeout
       if (bufferingTimeout) {
         clearTimeout(bufferingTimeout);
         bufferingTimeout = null;
       }
     };
 
-    // No forzar carga automática - esperar a que el usuario haga click en Play
-    // Esto evita errores de CORS al cargar la página
+    // Don't force automatic loading - wait for user to click Play
+    // This avoids CORS errors when loading the page
     // audio.load();
 
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
@@ -193,7 +192,7 @@ export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
     audio.addEventListener("playing", handlePlaying);
 
     return () => {
-      // Limpiar timeout de buffering al desmontar
+      // Clear buffering timeout on unmount
       if (bufferingTimeout) {
         clearTimeout(bufferingTimeout);
       }
@@ -204,12 +203,12 @@ export const useAudioPlayer = ({ audioSrc }: UseAudioPlayerProps) => {
       audio.removeEventListener("canplaythrough", handleCanPlayThrough);
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("ended", handleEnded);
-      audio.removeEventListener("error", handleError);
-      audio.removeEventListener("stalled", handleStalled);
-      audio.removeEventListener("waiting", handleWaiting);
-      audio.removeEventListener("playing", handlePlaying);
-    };
-  }, [audioSrc]);
+    audio.removeEventListener("error", handleError);
+    audio.removeEventListener("stalled", handleStalled);
+    audio.removeEventListener("waiting", handleWaiting);
+    audio.removeEventListener("playing", handlePlaying);
+  };
+}, [audioSrc, setDuration, setCurrentTime, setIsPlaying, currentTime]);
 
   // Control play/pause
   useEffect(() => {

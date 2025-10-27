@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   images: {
     unoptimized: true,
@@ -56,7 +56,7 @@ const nextConfig = {
   // (por ejemplo, /audiobook/TheDigitalCommunityManifesto.MP3)
   async rewrites() {
     const audioUrl =
-      process.env.NEXT_PUBLIC_AUDIO_URL ||
+      (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_AUDIO_URL) ||
       "https://ebook.tcmd-spkcc.com/ebook/ebook.mp3";
 
     return [

@@ -17,7 +17,7 @@ import {
     AlertCircle,
     Loader,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface AudioPlayerProps {
     audioSrc: string;
@@ -58,14 +58,14 @@ export function AudioPlayer({
 
     const playbackRates = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
-    const handleVolumeToggle = () => {
+    const handleVolumeToggle = useCallback(() => {
         if (volume > 0) {
             setPreviousVolume(volume);
             setVolume(0);
         } else {
             setVolume(previousVolume || 0.8);
         }
-    };
+    }, [volume, previousVolume, setVolume]);
 
     const getVolumeIcon = () => {
         if (volume === 0) return <VolumeX className="h-5 w-5" />;
@@ -179,18 +179,18 @@ export function AudioPlayer({
 
         window.addEventListener("keydown", handleKeyPress);
         return () => window.removeEventListener("keydown", handleKeyPress);
-    }, [isPlaying, volume, togglePlayPause, skipBackward, skipForward]);
+    }, [isPlaying, volume, togglePlayPause, skipBackward, skipForward, setVolume, handleVolumeToggle]);
 
     return (
-        <Card className="w-full bg-linear-to-br from-zinc-900 via-zinc-800 to-zinc-900 border-zinc-700 shadow-2xl">
+        <Card className="w-full bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border-zinc-700 shadow-2xl">
             <div className="p-6 md:p-8">
                 {/* Estado de Error */}
                 {hasError && (
                     <div className="mb-4 p-4 rounded-lg bg-destructive/10 border border-destructive/30 flex items-center gap-3">
                         <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
                         <div className="flex-1">
-                            <p className="text-sm font-medium text-destructive">Error de reproducción</p>
-                            <p className="text-xs text-destructive/80">No pudimos cargar el archivo de audio</p>
+                            <p className="text-sm font-medium text-destructive">Playback error</p>
+                            <p className="text-xs text-destructive/80">Could not load audio file</p>
                         </div>
                     </div>
                 )}
@@ -200,8 +200,8 @@ export function AudioPlayer({
                     <div className="mb-4 p-4 rounded-lg bg-primary/10 border border-primary/30 flex items-center gap-3">
                         <Loader className="h-5 w-5 text-primary shrink-0 animate-spin" />
                         <div className="flex-1">
-                            <p className="text-sm font-medium text-primary">Cargando audio...</p>
-                            <p className="text-xs text-primary/80">Preparando el reproductor</p>
+                            <p className="text-sm font-medium text-primary">Loading audio...</p>
+                            <p className="text-xs text-primary/80">Preparing player</p>
                         </div>
                     </div>
                 )}
@@ -211,8 +211,8 @@ export function AudioPlayer({
                     <div className="mb-4 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30 flex items-center gap-3">
                         <Loader className="h-5 w-5 text-yellow-500 shrink-0 animate-spin" />
                         <div className="flex-1">
-                            <p className="text-sm font-medium text-yellow-600 dark:text-yellow-400">Descargando contenido...</p>
-                            <p className="text-xs text-yellow-600/80 dark:text-yellow-400/80">Buffering en progreso</p>
+                            <p className="text-sm font-medium text-yellow-600 dark:text-yellow-400">Downloading content...</p>
+                            <p className="text-xs text-yellow-600/80 dark:text-yellow-400/80">Buffering in progress</p>
                         </div>
                     </div>
                 )}
@@ -264,7 +264,7 @@ export function AudioPlayer({
                         size="icon"
                         onClick={() => skipBackward(15)}
                         className="text-white hover:bg-zinc-700 hover:scale-110 transition-all duration-200"
-                        title="Retroceder 15s (J o ←)"
+                        title="Rewind 15s (J or ←)"
                     >
                         <SkipBack className="h-5 w-5" />
                     </Button>
@@ -273,7 +273,7 @@ export function AudioPlayer({
                         size="icon"
                         onClick={togglePlayPause}
                         className="h-14 w-14 rounded-full bg-white hover:bg-zinc-200 text-black shadow-lg hover:scale-110 transition-all duration-200"
-                        title={isPlaying ? "Pausar (Space o K)" : "Reproducir (Space o K)"}
+                        title={isPlaying ? "Pause (Space or K)" : "Play (Space or K)"}
                     >
                         {isPlaying ? (
                             <Pause className="h-6 w-6 fill-current" />
@@ -287,7 +287,7 @@ export function AudioPlayer({
                         size="icon"
                         onClick={() => skipForward(15)}
                         className="text-white hover:bg-zinc-700 hover:scale-110 transition-all duration-200"
-                        title="Adelantar 15s (L o →)"
+                        title="Forward 15s (L or →)"
                     >
                         <SkipForward className="h-5 w-5" />
                     </Button>
@@ -302,7 +302,7 @@ export function AudioPlayer({
                             size="icon"
                             onClick={handleVolumeToggle}
                             className="text-white hover:bg-zinc-700 transition-all hover:scale-110"
-                            title="Silenciar (M)"
+                            title="Mute (M)"
                         >
                             {getVolumeIcon()}
                         </Button>
