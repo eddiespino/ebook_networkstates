@@ -20,7 +20,7 @@ const authors: readonly Author[] = [
         description:
             "As a key contributor to the Hive Blockchain, Dan helped shape one of the world's most resilient and self-sustaining digital communities. Drawing from years of experience at the intersection of technology, governance, and community design, he explores how digital societies can evolve beyond traditional structures.",
         avatarUrl: "https://images.hive.blog/u/theycallmedan/avatar",
-        twitterHandle: "theycallmedan",
+        twitterHandle: "TheycallmeDan_",
     },
     {
         name: "Starkerz",
@@ -29,7 +29,7 @@ const authors: readonly Author[] = [
         description:
             "A pioneer in building open, community-driven blockchain ecosystems, Starkerz is a key contributor to the Hive Blockchain who helped shape one of the world's most resilient and self-sustaining digital communities. With years of experience at the intersection of technology, governance, and community design, they explore how digital societies can evolve beyond traditional structures.",
         avatarUrl: "https://images.hive.blog/u/starkerz/avatar",
-        twitterHandle: "starkerz",
+        twitterHandle: "3speaktv",
     },
 ]
 

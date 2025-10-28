@@ -92,7 +92,6 @@ export function audioPlayerErrorExample(): void {
  */
 export function audioBufferingExample(): void {
   const handleAudioStalled = (): void => {
-    console.warn("Audio stalled - buffering");
     showWarningToast("Buffering...", "Descargando contenido de audio");
   };
 

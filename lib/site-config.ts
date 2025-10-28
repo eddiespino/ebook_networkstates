@@ -23,25 +23,27 @@ export interface SiteConfig {
 }
 
 export const siteConfig: SiteConfig = {
-  name: "The Digital Community Manifesto",
+  name: "The Digital Community Manifesto | Blockchain Hive",
   shortName: "DCM",
   description:
-    "Digital Rights, Game Theory, and Governance of Scalable Blockchains for Use in Network States",
+    "Explore digital rights, blockchain governance, and game theory on Hive blockchain. A manifesto for network states and decentralized communities.",
   url: "https://book.networkstates.online",
-  ogImage: "https://book.networkstates.online/book-cover.jpg",
+  ogImage: "https://book.networkstates.online/og.jpg",
   authors: [
     {
-      name: "NoSpirit (@theycallmedan)",
-      twitter: "@theycallmedan",
+      name: "They Call Me Dan (@TheycallmeDan_)",
+      twitter: "@TheycallmeDan_",
     },
     {
-      name: "Starkerz (@starkerz)",
-      twitter: "@starkerz",
+      name: "3speaktv (@3speaktv)",
+      twitter: "@3speaktv",
     },
   ],
   creator: "@theycallmedan & @starkerz",
   keywords: [
-    "blockchain",
+    "blockchain hive",
+    "hive blockchain",
+    "blockchain governance",
     "network states",
     "digital rights",
     "governance",
@@ -50,13 +52,14 @@ export const siteConfig: SiteConfig = {
     "web3",
     "manifesto",
     "digital community",
-    "hive",
     "cryptocurrency",
+    "distributed ledger",
+    "scalable blockchain",
   ],
   twitter: {
     card: "summary_large_image",
-    site: "@theycallmedan",
-    creator: "@theycallmedan",
+    site: "@TheycallmeDan_",
+    creator: "@TheycallmeDan_",
   },
 } as const;
 

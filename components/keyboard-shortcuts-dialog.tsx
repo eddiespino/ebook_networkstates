@@ -15,10 +15,10 @@ import {
 interface KeyboardShortcut {
     keys: string[]
     description: string
-    mode?: "single" | "both"
+    mode?: "single" | "both" | "audio"
 }
 
-const shortcuts: KeyboardShortcut[] = [
+const pdfShortcuts: KeyboardShortcut[] = [
     {
         keys: ["←", "Page Up"],
         description: "Previous page",
@@ -46,8 +46,40 @@ const shortcuts: KeyboardShortcut[] = [
     },
 ]
 
-export function KeyboardShortcutsDialog() {
+const audioShortcuts: KeyboardShortcut[] = [
+    {
+        keys: ["Space", "K"],
+        description: "Play/Pause",
+    },
+    {
+        keys: ["←", "J"],
+        description: "-5 sec",
+    },
+    {
+        keys: ["→", "L"],
+        description: "+5 sec",
+    },
+    {
+        keys: ["↑"],
+        description: "Vol +",
+    },
+    {
+        keys: ["↓"],
+        description: "Vol -",
+    },
+    {
+        keys: ["M"],
+        description: "Mute",
+    },
+]
+
+interface KeyboardShortcutsDialogProps {
+    mode?: "pdf" | "audio"
+}
+
+export function KeyboardShortcutsDialog({ mode = "pdf" }: KeyboardShortcutsDialogProps) {
     const [open, setOpen] = useState(false)
+    const shortcuts = mode === "audio" ? audioShortcuts : pdfShortcuts
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -60,7 +92,9 @@ export function KeyboardShortcutsDialog() {
                 <DialogHeader>
                     <DialogTitle>Keyboard Shortcuts</DialogTitle>
                     <DialogDescription>
-                        Use these shortcuts to navigate the PDF reader more efficiently
+                        {mode === "audio"
+                            ? "Use these shortcuts to control the audio player"
+                            : "Use these shortcuts to navigate the PDF reader more efficiently"}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
@@ -76,10 +110,10 @@ export function KeyboardShortcutsDialog() {
                                     </p>
                                 )}
                             </div>
-                            <div className="flex items-center gap-1 shrink-0">
+                            <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
                                 {shortcut.keys.map((key, keyIndex) => (
                                     <span key={keyIndex} className="flex items-center gap-1">
-                                        <kbd className="px-2 py-1 text-xs font-semibold text-foreground bg-muted border border-border rounded shadow-sm">
+                                        <kbd className="px-2 py-1 text-xs font-semibold text-foreground bg-muted border border-border rounded shadow-sm whitespace-nowrap">
                                             {key}
                                         </kbd>
                                         {keyIndex < shortcut.keys.length - 1 && (

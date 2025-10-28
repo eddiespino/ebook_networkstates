@@ -1,10 +1,12 @@
 "use client";
 
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
+import { useCurrentChapter } from "@/hooks/useCurrentChapter";
 import { useAudioPlayerStore } from "@/store/audioPlayerStore";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Card } from "@/components/ui/card";
+import { KeyboardShortcutsDialog } from "@/components/keyboard-shortcuts-dialog";
 import {
     Play,
     Pause,
@@ -16,14 +18,17 @@ import {
     Gauge,
     AlertCircle,
     Loader,
+    ChevronLeft,
+    ChevronRight,
 } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 interface AudioPlayerProps {
     audioSrc: string;
     title?: string;
     author?: string;
     coverImage?: string;
+    onEnded?: () => void;
 }
 
 export function AudioPlayer({
@@ -31,8 +36,11 @@ export function AudioPlayer({
     title = "The Digital Community Manifesto",
     author = "NoSpirit & Starkerz",
     coverImage = "/book-cover.jpg",
+    onEnded,
 }: AudioPlayerProps) {
-
+    const previousSrcRef = useRef<string>("");
+    const fadeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const hasResetOnMountRef = useRef<boolean>(false); // Flag para resetear solo una vez
 
     const {
         audioRef,
@@ -49,14 +57,118 @@ export function AudioPlayer({
         formatTime,
     } = useAudioPlayer({ audioSrc });
 
-    const { duration } = useAudioPlayerStore();
+    const {
+        hasNext,
+        hasPrevious,
+        goToNextChapter,
+        goToPreviousChapter,
+        currentChapterIndex,
+        totalChapters,
+    } = useCurrentChapter();
+
+    const { duration, setIsPlaying } = useAudioPlayerStore();
     const [showSpeedMenu, setShowSpeedMenu] = useState(false);
     const [previousVolume, setPreviousVolume] = useState(0.8);
     const [isBuffering, setIsBuffering] = useState(false);
     const [hasError, setHasError] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [isFading, setIsFading] = useState(false);
 
     const playbackRates = [0.5, 0.75, 1, 1.25, 1.5, 2];
+
+    /**
+     * Fade out del audio actual
+     * Reduce gradualmente el volumen antes de cambiar de capítulo
+     */
+    const fadeOut = useCallback(
+        (callback: () => void) => {
+            if (!audioRef.current || isFading) return;
+
+            setIsFading(true);
+            const audio = audioRef.current;
+            const startVolume = audio.volume;
+            const fadeSteps = 20;
+            const stepDuration = 15; // ms
+            let currentStep = 0;
+
+            if (fadeIntervalRef.current) {
+                clearInterval(fadeIntervalRef.current);
+            }
+
+            fadeIntervalRef.current = setInterval(() => {
+                currentStep++;
+                const newVolume = startVolume * (1 - currentStep / fadeSteps);
+                audio.volume = Math.max(0, newVolume);
+
+                if (currentStep >= fadeSteps) {
+                    if (fadeIntervalRef.current) {
+                        clearInterval(fadeIntervalRef.current);
+                        fadeIntervalRef.current = null;
+                    }
+                    audio.volume = volume; // Restaurar volumen original
+                    setIsFading(false);
+                    callback();
+                }
+            }, stepDuration);
+        },
+        [audioRef, volume, isFading]
+    );
+
+    /**
+     * Fade in del nuevo audio
+     * Aumenta gradualmente el volumen después de cargar
+     */
+    const fadeIn = useCallback(async () => {
+        if (!audioRef.current) return;
+
+        const audio = audioRef.current;
+        const targetVolume = volume;
+        const fadeSteps = 20;
+        const stepDuration = 15; // ms
+        let currentStep = 0;
+
+        audio.volume = 0;
+
+        if (fadeIntervalRef.current) {
+            clearInterval(fadeIntervalRef.current);
+        }
+
+        fadeIntervalRef.current = setInterval(() => {
+            currentStep++;
+            const newVolume = targetVolume * (currentStep / fadeSteps);
+            audio.volume = Math.min(targetVolume, newVolume);
+
+            if (currentStep >= fadeSteps) {
+                if (fadeIntervalRef.current) {
+                    clearInterval(fadeIntervalRef.current);
+                    fadeIntervalRef.current = null;
+                }
+                audio.volume = targetVolume;
+            }
+        }, stepDuration);
+    }, [audioRef, volume]);
+
+    // Detectar cambio de capítulo y aplicar fade in si está reproduciendo
+    useEffect(() => {
+        if (audioSrc && audioSrc !== previousSrcRef.current) {
+            previousSrcRef.current = audioSrc;
+
+            // Reset error and loading states
+            setHasError(false);
+            setIsLoading(true);
+
+            // Si está marcado para reproducir (isPlaying del store es true)
+            // aplicar fade in cuando el audio esté listo
+            const audio = audioRef.current;
+            if (audio && isPlaying) {
+                const handleCanPlay = () => {
+                    fadeIn();
+                    audio.removeEventListener("canplay", handleCanPlay);
+                };
+                audio.addEventListener("canplay", handleCanPlay);
+            }
+        }
+    }, [audioSrc, audioRef, isPlaying, fadeIn]);
 
     const handleVolumeToggle = useCallback(() => {
         if (volume > 0) {
@@ -66,6 +178,59 @@ export function AudioPlayer({
             setVolume(previousVolume || 0.8);
         }
     }, [volume, previousVolume, setVolume]);
+
+    /**
+     * Cambiar al siguiente capítulo con transición suave
+     */
+    const handleNextChapter = useCallback(() => {
+        if (!hasNext || isFading) return;
+
+        fadeOut(() => {
+            goToNextChapter();
+        });
+    }, [hasNext, isFading, fadeOut, goToNextChapter]);
+
+    /**
+     * Cambiar al capítulo anterior con transición suave
+     */
+    const handlePreviousChapter = useCallback(() => {
+        if (!hasPrevious || isFading) return;
+
+        fadeOut(() => {
+            goToPreviousChapter();
+        });
+    }, [hasPrevious, isFading, fadeOut, goToPreviousChapter]);
+
+    // Resetear el audio al montar el componente (recarga de página)
+    useEffect(() => {
+        if (!hasResetOnMountRef.current) {
+            hasResetOnMountRef.current = true;
+
+            // Al recargar la página, resetear el estado del reproductor
+            const audio = audioRef.current;
+            if (audio) {
+                // Solo pausar si el audio está en un estado que lo permite
+                try {
+                    if (!audio.paused) {
+                        audio.pause();
+                    }
+                    audio.currentTime = 0;
+                } catch (error) {
+                    // Ignorar errores de pause() en audio no iniciado
+                }
+                setIsPlaying(false);
+            }
+        }
+    }, []); // Solo ejecutar una vez al montar
+
+    // Limpiar intervalos al desmontar
+    useEffect(() => {
+        return () => {
+            if (fadeIntervalRef.current) {
+                clearInterval(fadeIntervalRef.current);
+            }
+        };
+    }, []);
 
     const getVolumeIcon = () => {
         if (volume === 0) return <VolumeX className="h-5 w-5" />;
@@ -118,12 +283,25 @@ export function AudioPlayer({
             setIsBuffering(false);
         };
 
+        const handleEnded = () => {
+            // Auto-avanzar al siguiente capítulo si existe
+            if (hasNext) {
+                goToNextChapter();
+            }
+
+            // Llamar al callback externo si existe
+            if (onEnded) {
+                onEnded();
+            }
+        };
+
         audio.addEventListener("loadstart", handleLoadStart);
         audio.addEventListener("canplay", handleCanPlay);
         audio.addEventListener("canplaythrough", handleCanPlayThrough);
         audio.addEventListener("waiting", handleWaiting);
         audio.addEventListener("playing", handlePlaying);
         audio.addEventListener("error", handleError);
+        audio.addEventListener("ended", handleEnded);
 
         return () => {
             // Limpiar timeout al desmontar
@@ -137,8 +315,9 @@ export function AudioPlayer({
             audio.removeEventListener("waiting", handleWaiting);
             audio.removeEventListener("playing", handlePlaying);
             audio.removeEventListener("error", handleError);
+            audio.removeEventListener("ended", handleEnded);
         };
-    }, [audioRef]);
+    }, [audioRef, onEnded, hasNext, goToNextChapter]);
     useEffect(() => {
         const handleKeyPress = (e: KeyboardEvent) => {
             // Evitar conflictos con inputs
@@ -182,65 +361,57 @@ export function AudioPlayer({
     }, [isPlaying, volume, togglePlayPause, skipBackward, skipForward, setVolume, handleVolumeToggle]);
 
     return (
-        <Card className="w-full bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border-zinc-700 shadow-2xl">
-            <div className="p-6 md:p-8">
-                {/* Estado de Error */}
+        <Card className="w-full bg-linear-to-br from-zinc-900 via-zinc-800 to-zinc-900 border-zinc-700 shadow-2xl">
+            <div className="p-4 md:p-5">
+                {/* Estado de Error - Compacto */}
                 {hasError && (
-                    <div className="mb-4 p-4 rounded-lg bg-destructive/10 border border-destructive/30 flex items-center gap-3">
-                        <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
-                        <div className="flex-1">
-                            <p className="text-sm font-medium text-destructive">Playback error</p>
-                            <p className="text-xs text-destructive/80">Could not load audio file</p>
-                        </div>
+                    <div className="mb-3 p-3 rounded-lg bg-destructive/10 border border-destructive/30 flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                        <p className="text-xs font-medium text-destructive">Could not load audio file</p>
                     </div>
                 )}
 
-                {/* Indicador de Carga */}
-                {isLoading && !hasError && (
-                    <div className="mb-4 p-4 rounded-lg bg-primary/10 border border-primary/30 flex items-center gap-3">
-                        <Loader className="h-5 w-5 text-primary shrink-0 animate-spin" />
-                        <div className="flex-1">
-                            <p className="text-sm font-medium text-primary">Loading audio...</p>
-                            <p className="text-xs text-primary/80">Preparing player</p>
-                        </div>
-                    </div>
-                )}
-
-                {/* Indicador de Buffering */}
-                {isBuffering && isPlaying && !isLoading && (
-                    <div className="mb-4 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30 flex items-center gap-3">
-                        <Loader className="h-5 w-5 text-yellow-500 shrink-0 animate-spin" />
-                        <div className="flex-1">
-                            <p className="text-sm font-medium text-yellow-600 dark:text-yellow-400">Downloading content...</p>
-                            <p className="text-xs text-yellow-600/80 dark:text-yellow-400/80">Buffering in progress</p>
-                        </div>
-                    </div>
-                )}
-                <div className="flex items-center gap-4 mb-6">
-                    <div className="relative w-20 h-20 rounded-lg overflow-hidden shadow-lg shrink-0 group">
+                <div className="flex items-center gap-4 mb-4">
+                    <div className="relative w-16 h-16 rounded-lg overflow-hidden shadow-lg shrink-0 group">
                         <img
                             src={coverImage}
                             alt={title}
                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                         />
-                        {isPlaying && (
+
+                        {/* Indicador de carga en la portada */}
+                        {(isLoading || isFading) && !hasError && (
+                            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                                <Loader className="h-5 w-5 text-white animate-spin" />
+                            </div>
+                        )}
+
+                        {/* Indicador de buffering en la portada */}
+                        {isBuffering && isPlaying && !isLoading && !isFading && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                <Loader className="h-4 w-4 text-yellow-400 animate-spin" />
+                            </div>
+                        )}
+
+                        {/* Animación de reproducción */}
+                        {isPlaying && !isLoading && !isBuffering && !isFading && (
                             <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                                <div className="flex gap-1">
-                                    <div className="w-1 h-4 bg-white animate-pulse" style={{ animationDelay: "0ms" }} />
-                                    <div className="w-1 h-6 bg-white animate-pulse" style={{ animationDelay: "150ms" }} />
-                                    <div className="w-1 h-5 bg-white animate-pulse" style={{ animationDelay: "300ms" }} />
+                                <div className="flex gap-0.5">
+                                    <div className="w-0.5 h-3 bg-white animate-pulse" style={{ animationDelay: "0ms" }} />
+                                    <div className="w-0.5 h-4 bg-white animate-pulse" style={{ animationDelay: "150ms" }} />
+                                    <div className="w-0.5 h-3 bg-white animate-pulse" style={{ animationDelay: "300ms" }} />
                                 </div>
                             </div>
                         )}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <h3 className="text-xl font-bold text-white truncate">{title}</h3>
-                        <p className="text-sm text-zinc-400 truncate">{author}</p>
+                        <h3 className="text-lg font-bold text-white truncate">{title}</h3>
+                        <p className="text-xs text-zinc-400 truncate">{author}</p>
                     </div>
                 </div>
 
                 {/* Progress Bar */}
-                <div className="mb-4 group">
+                <div className="mb-3 group">
                     <Slider
                         value={[currentTime]}
                         max={duration > 0 ? duration : 100}
@@ -258,7 +429,19 @@ export function AudioPlayer({
                 </div>
 
                 {/* Main Controls */}
-                <div className="flex items-center justify-center gap-4 mb-6">
+                <div className="flex items-center justify-center gap-4 mb-4">
+                    {/* Previous Chapter Button */}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handlePreviousChapter}
+                        disabled={!hasPrevious || isFading}
+                        className="text-white hover:bg-zinc-700 hover:scale-110 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                        title={hasPrevious ? "Previous chapter" : "No previous chapter"}
+                    >
+                        <ChevronLeft className="h-5 w-5" />
+                    </Button>
+
                     <Button
                         variant="ghost"
                         size="icon"
@@ -274,8 +457,11 @@ export function AudioPlayer({
                         onClick={togglePlayPause}
                         className="h-14 w-14 rounded-full bg-white hover:bg-zinc-200 text-black shadow-lg hover:scale-110 transition-all duration-200"
                         title={isPlaying ? "Pause (Space or K)" : "Play (Space or K)"}
+                        disabled={isFading}
                     >
-                        {isPlaying ? (
+                        {isFading ? (
+                            <Loader className="h-6 w-6 animate-spin" />
+                        ) : isPlaying ? (
                             <Pause className="h-6 w-6 fill-current" />
                         ) : (
                             <Play className="h-6 w-6 fill-current ml-1" />
@@ -291,7 +477,28 @@ export function AudioPlayer({
                     >
                         <SkipForward className="h-5 w-5" />
                     </Button>
+
+                    {/* Next Chapter Button */}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleNextChapter}
+                        disabled={!hasNext || isFading}
+                        className="text-white hover:bg-zinc-700 hover:scale-110 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                        title={hasNext ? "Next chapter" : "No next chapter"}
+                    >
+                        <ChevronRight className="h-5 w-5" />
+                    </Button>
                 </div>
+
+                {/* Chapter Info */}
+                {currentChapterIndex >= 0 && (
+                    <div className="text-center mb-3">
+                        <p className="text-xs text-zinc-400">
+                            Chapter {currentChapterIndex + 1} of {totalChapters}
+                        </p>
+                    </div>
+                )}
 
                 {/* Volume and Speed Controls */}
                 <div className="flex items-center justify-between gap-4">
@@ -350,49 +557,9 @@ export function AudioPlayer({
                             </div>
                         )}
                     </div>
-                </div>
 
-                {/* Keyboard Shortcuts Hint */}
-                <div className="mt-4 pt-4 border-t border-zinc-700/50">
-                    <details className="group">
-                        <summary className="text-xs text-zinc-500 hover:text-zinc-400 cursor-pointer list-none flex items-center justify-center gap-2 transition-colors">
-                            <span>Keyboard Shortcuts</span>
-                            <svg
-                                className="w-3 h-3 transition-transform group-open:rotate-180"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </summary>
-                        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                            <div className="flex items-center gap-2">
-                                <kbd className="px-2 py-1 bg-zinc-700 rounded text-zinc-300 font-mono">Space</kbd>
-                                <span className="text-zinc-400">Play/Pause</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <kbd className="px-2 py-1 bg-zinc-700 rounded text-zinc-300 font-mono">M</kbd>
-                                <span className="text-zinc-400">Mute</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <kbd className="px-2 py-1 bg-zinc-700 rounded text-zinc-300 font-mono">←</kbd>
-                                <span className="text-zinc-400">-5 sec</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <kbd className="px-2 py-1 bg-zinc-700 rounded text-zinc-300 font-mono">→</kbd>
-                                <span className="text-zinc-400">+5 sec</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <kbd className="px-2 py-1 bg-zinc-700 rounded text-zinc-300 font-mono">↑</kbd>
-                                <span className="text-zinc-400">Vol +</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <kbd className="px-2 py-1 bg-zinc-700 rounded text-zinc-300 font-mono">↓</kbd>
-                                <span className="text-zinc-400">Vol -</span>
-                            </div>
-                        </div>
-                    </details>
+                    {/* Keyboard Shortcuts Button */}
+                    <KeyboardShortcutsDialog mode="audio" />
                 </div>
 
                 {/* Hidden Audio Element */}

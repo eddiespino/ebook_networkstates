@@ -2,12 +2,26 @@ import type { MetadataRoute } from "next";
 import { siteConfig } from "@/lib/site-config";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const routes = ["", "/audiobook", "/read"].map((route) => ({
-    url: `${siteConfig.url}${route}`,
-    lastModified: new Date().toISOString(),
-    changeFrequency: "monthly" as const,
-    priority: route === "" ? 1.0 : 0.8,
-  }));
+  const currentDate = new Date().toISOString().split("T")[0];
 
-  return routes;
+  return [
+    {
+      url: siteConfig.url,
+      lastModified: currentDate,
+      changeFrequency: "monthly" as const,
+      priority: 1.0,
+    },
+    {
+      url: `${siteConfig.url}/audiobook`,
+      lastModified: currentDate,
+      changeFrequency: "monthly" as const,
+      priority: 0.95, // Alta prioridad - contenido principal
+    },
+    {
+      url: `${siteConfig.url}/read`,
+      lastModified: currentDate,
+      changeFrequency: "monthly" as const,
+      priority: 0.95, // Alta prioridad - contenido principal
+    },
+  ];
 }
